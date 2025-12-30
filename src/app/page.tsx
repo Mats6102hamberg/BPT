@@ -14,6 +14,10 @@ export default function Dashboard() {
   const { tournaments, loadTournaments, createTournament, deleteTournament } = useTournamentStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
   const [tournamentName, setTournamentName] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [settings, setSettings] = useState<TournamentSettings>({
@@ -23,6 +27,9 @@ export default function Dashboard() {
     teamsPerPool: 3,
   });
 
+  // Admin PIN
+  const ADMIN_PIN = '1234';
+
   useEffect(() => {
     loadTournaments();
     loadUnreadCount();
@@ -31,6 +38,22 @@ export default function Dashboard() {
   const loadUnreadCount = async () => {
     const count = await announcementAPI.getUnreadCount();
     setUnreadCount(count);
+  };
+
+  const handlePinSubmit = () => {
+    if (pinInput === ADMIN_PIN) {
+      setIsAdminMode(true);
+      setIsPinModalOpen(false);
+      setPinInput('');
+      setPinError('');
+    } else {
+      setPinError('Fel PIN-kod. Kontakta tävlingsledningen.');
+      setPinInput('');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminMode(false);
   };
 
   const handleCreateTournament = async () => {
@@ -74,14 +97,23 @@ export default function Dashboard() {
           </p>
 
           <div className="flex gap-6 justify-center flex-wrap">
-            <Button
-              size="lg"
-              variant="success"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="text-xl px-10"
-            >
-              🚀 Skapa Ny Tävling
-            </Button>
+            <Link href="/tavlingsledningen">
+              <Button
+                size="lg"
+                className={`text-xl px-10 relative ${
+                  unreadCount > 0
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 animate-pulse shadow-xl shadow-red-500/50'
+                    : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+                }`}
+              >
+                🚨 Tävlingsledningen
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-white text-red-600 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white animate-bounce">
+                    {unreadCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             <Link href="/resultat">
               <Button
                 size="lg"
@@ -90,31 +122,35 @@ export default function Dashboard() {
                 🏆 Resultat
               </Button>
             </Link>
-            <Link href="/tavlingsledningen">
+            {isAdminMode ? (
+              <>
+                <Button
+                  size="lg"
+                  variant="success"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="text-xl px-10"
+                >
+                  🚀 Skapa Ny Tävling
+                </Button>
+                <Button
+                  size="lg"
+                  variant="danger"
+                  onClick={handleAdminLogout}
+                  className="text-xl px-10"
+                >
+                  🔓 Logga ut Admin
+                </Button>
+              </>
+            ) : (
               <Button
                 size="lg"
-                className={`text-xl px-10 relative ${
-                  unreadCount > 0
-                    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 animate-pulse shadow-xl shadow-red-500/50'
-                    : 'bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700'
-                }`}
+                variant="ghost"
+                onClick={() => setIsPinModalOpen(true)}
+                className="text-xl px-10 bg-white/20 text-white hover:bg-white/30"
               >
-                🚨 Tävlingsledningen
-                {unreadCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white">
-                    {unreadCount}
-                  </span>
-                )}
+                🔐 Admin
               </Button>
-            </Link>
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={() => setIsInstructionsOpen(true)}
-              className="text-xl px-10 bg-white/20 text-white hover:bg-white/30"
-            >
-              📖 Instruktioner
-            </Button>
+            )}
           </div>
 
           {/* Feature Cards */}
@@ -222,19 +258,21 @@ export default function Dashboard() {
                     </CardContent>
                   </Link>
 
-                  <div className="px-6 pb-6">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDeleteTournament(tournament.id, tournament.name);
-                      }}
-                      className="w-full"
-                    >
-                      🗑️ Radera
-                    </Button>
-                  </div>
+                  {isAdminMode && (
+                    <div className="px-6 pb-6">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDeleteTournament(tournament.id, tournament.name);
+                        }}
+                        className="w-full"
+                      >
+                        🗑️ Radera
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
@@ -336,6 +374,72 @@ export default function Dashboard() {
             <Button
               variant="secondary"
               onClick={() => setIsCreateModalOpen(false)}
+              className="flex-1"
+            >
+              Avbryt
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Admin PIN Modal */}
+      <Modal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false);
+          setPinInput('');
+          setPinError('');
+        }}
+        title="🔐 Admin-inloggning"
+        size="sm"
+      >
+        <div className="space-y-6">
+          <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4">
+            <p className="text-blue-900 font-semibold text-center">
+              Endast för tävlingsledningen
+            </p>
+            <p className="text-blue-700 text-sm text-center mt-1">
+              Administrera tävlingar och inställningar
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              PIN-kod
+            </label>
+            <Input
+              type="password"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="Ange PIN-kod"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handlePinSubmit();
+                }
+              }}
+              className="text-center text-2xl tracking-widest"
+            />
+            {pinError && (
+              <p className="text-red-600 text-sm mt-2 font-semibold">❌ {pinError}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={handlePinSubmit}
+              className="flex-1"
+              disabled={!pinInput}
+            >
+              Logga in
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsPinModalOpen(false);
+                setPinInput('');
+                setPinError('');
+              }}
               className="flex-1"
             >
               Avbryt
