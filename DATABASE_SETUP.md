@@ -181,3 +181,4 @@ Om något inte fungerar, kontakta mig eller kolla Vercel-loggar:
 1. Gå till ditt projekt i Vercel
 2. Klicka på **Logs**
 3. Sök efter fel-meddelanden
+# Database configured and ready!
