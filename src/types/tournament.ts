@@ -28,6 +28,7 @@ export interface Match {
   team2Score?: number;
   isCompleted: boolean;
   winnerId?: string;
+  cupType?: 'A' | 'B'; // For cup matches (A or B tournament)
 }
 
 export interface TournamentSettings {

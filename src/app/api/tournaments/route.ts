@@ -54,6 +54,7 @@ export async function GET() {
           team2Score: match.team2_score,
           isCompleted: match.is_completed,
           winnerId: match.winner_id,
+          cupType: match.cup_type || undefined,
         })),
       };
 
