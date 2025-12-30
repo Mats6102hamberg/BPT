@@ -17,12 +17,18 @@ export default function TavlingsledningenPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: '',
     message: '',
     tournamentId: '',
     priority: 'normal' as 'normal' | 'important' | 'urgent',
   });
+
+  // PIN-kod för tävlingsledningen (kan ändras efter behov)
+  const ADMIN_PIN = '1234';
 
   useEffect(() => {
     loadData();
@@ -36,6 +42,30 @@ export default function TavlingsledningenPage() {
     // Mark all as read when viewing
     for (const announcement of data) {
       await announcementDB.markAsRead(announcement.id);
+    }
+  };
+
+  const handlePinSubmit = () => {
+    if (pinInput === ADMIN_PIN) {
+      setIsAdminMode(true);
+      setIsPinModalOpen(false);
+      setPinInput('');
+      setPinError('');
+    } else {
+      setPinError('Fel PIN-kod. Endast tävlingsledningen har tillgång.');
+      setPinInput('');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminMode(false);
+  };
+
+  const handleAdminButtonClick = () => {
+    if (isAdminMode) {
+      handleAdminLogout();
+    } else {
+      setIsPinModalOpen(true);
     }
   };
 
@@ -112,10 +142,10 @@ export default function TavlingsledningenPage() {
             </div>
             <div className="flex gap-3">
               <Button
-                onClick={() => setIsAdminMode(!isAdminMode)}
+                onClick={handleAdminButtonClick}
                 variant={isAdminMode ? 'danger' : 'secondary'}
               >
-                {isAdminMode ? '👁️ Visa meddelanden' : '⚙️ Admin'}
+                {isAdminMode ? '👁️ Visa meddelanden' : '🔐 Tävlingsledning'}
               </Button>
               <Button onClick={() => router.push('/')}>← Tillbaka</Button>
             </div>
@@ -256,6 +286,72 @@ export default function TavlingsledningenPage() {
           </div>
         )}
       </div>
+
+      {/* PIN Code Modal */}
+      <Modal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false);
+          setPinInput('');
+          setPinError('');
+        }}
+        title="🔐 Tävlingsledning - Inloggning"
+        size="sm"
+      >
+        <div className="space-y-6">
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+            <p className="text-amber-900 font-semibold text-center">
+              Endast för tävlingsledningen
+            </p>
+            <p className="text-amber-700 text-sm text-center mt-1">
+              Deltagare kan bara läsa meddelanden
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              PIN-kod
+            </label>
+            <Input
+              type="password"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="Ange PIN-kod"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handlePinSubmit();
+                }
+              }}
+              className="text-center text-2xl tracking-widest"
+            />
+            {pinError && (
+              <p className="text-red-600 text-sm mt-2 font-semibold">❌ {pinError}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={handlePinSubmit}
+              className="flex-1"
+              disabled={!pinInput}
+            >
+              Logga in
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsPinModalOpen(false);
+                setPinInput('');
+                setPinError('');
+              }}
+              className="flex-1"
+            >
+              Avbryt
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Create Announcement Modal */}
       <Modal
