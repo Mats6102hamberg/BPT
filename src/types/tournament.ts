@@ -46,6 +46,6 @@ export interface Tournament {
   settings: TournamentSettings;
   currentPhase: TournamentPhase;
   currentRound: number;
-  createdAt: number;
-  updatedAt: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
