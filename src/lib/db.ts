@@ -40,7 +40,7 @@ class TournamentDB {
       request.onsuccess = () => {
         const tournaments = request.result as Tournament[];
         // Sort by most recent first
-        tournaments.sort((a, b) => b.updatedAt - a.updatedAt);
+        tournaments.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
         resolve(tournaments);
       };
     });
