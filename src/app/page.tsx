@@ -152,24 +152,6 @@ export default function Dashboard() {
               </Button>
             )}
           </div>
-
-          {/* Feature Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-4xl mx-auto">
-            {[
-              { icon: '⚡', title: 'Swiss System', desc: 'Automatisk parning för rättvisa matcher' },
-              { icon: '🎯', title: 'Monrad', desc: 'Strikt topp-mot-näst-topp-parning' },
-              { icon: '💾', title: 'Automatisk', desc: 'Sparar data automatiskt' },
-            ].map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-white/15 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all"
-              >
-                <div className="text-4xl mb-3">{feature.icon}</div>
-                <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                <p className="text-sm text-blue-100">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
