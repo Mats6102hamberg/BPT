@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Tournament, TournamentSettings } from '@/types/tournament';
+import { announcementDB } from '@/lib/announcement-db';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
   const [tournamentName, setTournamentName] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
   const [settings, setSettings] = useState<TournamentSettings>({
     teamType: 'dubbel',
     ageCategory: 'öppen',
@@ -23,7 +25,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadTournaments();
+    loadUnreadCount();
   }, [loadTournaments]);
+
+  const loadUnreadCount = async () => {
+    const count = await announcementDB.getUnreadCount();
+    setUnreadCount(count);
+  };
 
   const handleCreateTournament = async () => {
     if (!tournamentName.trim()) return;
@@ -80,6 +88,23 @@ export default function Dashboard() {
                 className="text-xl px-10 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
               >
                 🏆 Resultat
+              </Button>
+            </Link>
+            <Link href="/tavlingsledningen">
+              <Button
+                size="lg"
+                className={`text-xl px-10 relative ${
+                  unreadCount > 0
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 animate-pulse shadow-xl shadow-red-500/50'
+                    : 'bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700'
+                }`}
+              >
+                🚨 Tävlingsledningen
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm border-2 border-white">
+                    {unreadCount}
+                  </span>
+                )}
               </Button>
             </Link>
             <Button
