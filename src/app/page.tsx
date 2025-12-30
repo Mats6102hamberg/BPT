@@ -74,6 +74,14 @@ export default function Dashboard() {
             >
               🚀 Skapa Ny Tävling
             </Button>
+            <Link href="/resultat">
+              <Button
+                size="lg"
+                className="text-xl px-10 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+              >
+                🏆 Resultat
+              </Button>
+            </Link>
             <Button
               size="lg"
               variant="ghost"
