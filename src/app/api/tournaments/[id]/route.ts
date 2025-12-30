@@ -4,10 +4,10 @@ import { sql, handleDbError } from '@/lib/db-client';
 // GET single tournament
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const tournamentResult = await sql`
       SELECT * FROM tournaments WHERE id = ${id}
@@ -72,10 +72,10 @@ export async function GET(
 // PATCH update tournament
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { currentPhase, currentRound } = body;
 
@@ -95,10 +95,10 @@ export async function PATCH(
 // DELETE tournament
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // CASCADE will automatically delete teams and matches
     await sql`DELETE FROM tournaments WHERE id = ${id}`;
