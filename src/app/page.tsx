@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Tournament, TournamentSettings } from '@/types/tournament';
-import { announcementDB } from '@/lib/announcement-db';
+import { announcementAPI } from '@/lib/announcement-api';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -29,7 +29,7 @@ export default function Dashboard() {
   }, [loadTournaments]);
 
   const loadUnreadCount = async () => {
-    const count = await announcementDB.getUnreadCount();
+    const count = await announcementAPI.getUnreadCount();
     setUnreadCount(count);
   };
 

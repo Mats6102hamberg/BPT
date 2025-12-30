@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Tournament, Team, Match } from '@/types/tournament';
-import { tournamentDB } from '@/lib/db';
 import { generateSwissPairings, updateTeamRecords } from '@/lib/swiss-system';
 
 interface TournamentStore {
@@ -11,7 +10,7 @@ interface TournamentStore {
 
   // Actions
   loadTournaments: () => Promise<void>;
-  createTournament: (tournament: Omit<Tournament, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Tournament>;
+  createTournament: (tournament: Omit<Tournament, 'id'>) => Promise<Tournament>;
   updateTournament: (id: string, updates: Partial<Tournament>) => Promise<void>;
   deleteTournament: (id: string) => Promise<void>;
   selectTournament: (id: string | null) => Promise<void>;
@@ -38,7 +37,9 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   loadTournaments: async () => {
     set({ isLoading: true, error: null });
     try {
-      const tournaments = await tournamentDB.getAllTournaments();
+      const response = await fetch('/api/tournaments');
+      if (!response.ok) throw new Error('Failed to load tournaments');
+      const tournaments = await response.json();
       set({ tournaments, isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
@@ -48,15 +49,15 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   createTournament: async (tournamentData) => {
     set({ isLoading: true, error: null });
     try {
-      const now = Date.now();
-      const tournament: Tournament = {
-        ...tournamentData,
-        id: now.toString(),
-        createdAt: now,
-        updatedAt: now,
-      };
+      const response = await fetch('/api/tournaments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tournamentData),
+      });
 
-      await tournamentDB.saveTournament(tournament);
+      if (!response.ok) throw new Error('Failed to create tournament');
+      const tournament = await response.json();
+
       set((state) => ({
         tournaments: [tournament, ...state.tournaments],
         isLoading: false,
@@ -72,17 +73,17 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   updateTournament: async (id, updates) => {
     set({ isLoading: true, error: null });
     try {
-      const tournament = await tournamentDB.getTournament(id);
-      if (!tournament) throw new Error('Tournament not found');
+      const response = await fetch(`/api/tournaments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
 
-      const updated = { ...tournament, ...updates, updatedAt: Date.now() };
-      await tournamentDB.saveTournament(updated);
+      if (!response.ok) throw new Error('Failed to update tournament');
 
-      set((state) => ({
-        tournaments: state.tournaments.map((t) => (t.id === id ? updated : t)),
-        currentTournament: state.currentTournament?.id === id ? updated : state.currentTournament,
-        isLoading: false,
-      }));
+      // Reload tournaments to get fresh data
+      await get().loadTournaments();
+      set({ isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
@@ -91,7 +92,12 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   deleteTournament: async (id) => {
     set({ isLoading: true, error: null });
     try {
-      await tournamentDB.deleteTournament(id);
+      const response = await fetch(`/api/tournaments/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete tournament');
+
       set((state) => ({
         tournaments: state.tournaments.filter((t) => t.id !== id),
         currentTournament: state.currentTournament?.id === id ? null : state.currentTournament,
@@ -110,7 +116,9 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const tournament = await tournamentDB.getTournament(id);
+      const response = await fetch(`/api/tournaments/${id}`);
+      if (!response.ok) throw new Error('Failed to load tournament');
+      const tournament = await response.json();
       set({ currentTournament: tournament, isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
@@ -120,32 +128,18 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   addTeam: async (tournamentId, teamData) => {
     set({ isLoading: true, error: null });
     try {
-      const tournament = await tournamentDB.getTournament(tournamentId);
-      if (!tournament) throw new Error('Tournament not found');
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...teamData, tournamentId }),
+      });
 
-      const team: Team = {
-        ...teamData,
-        id: Date.now().toString(),
-        wins: 0,
-        losses: 0,
-        points: 0,
-        buchholz: 0,
-        opponents: [],
-      };
+      if (!response.ok) throw new Error('Failed to add team');
 
-      const updated = {
-        ...tournament,
-        teams: [...tournament.teams, team],
-        updatedAt: Date.now(),
-      };
-
-      await tournamentDB.saveTournament(updated);
-
-      set((state) => ({
-        tournaments: state.tournaments.map((t) => (t.id === tournamentId ? updated : t)),
-        currentTournament: state.currentTournament?.id === tournamentId ? updated : state.currentTournament,
-        isLoading: false,
-      }));
+      // Reload tournament to get fresh data
+      await get().selectTournament(tournamentId);
+      await get().loadTournaments();
+      set({ isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
@@ -154,22 +148,16 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   removeTeam: async (tournamentId, teamId) => {
     set({ isLoading: true, error: null });
     try {
-      const tournament = await tournamentDB.getTournament(tournamentId);
-      if (!tournament) throw new Error('Tournament not found');
+      const response = await fetch(`/api/teams?id=${teamId}`, {
+        method: 'DELETE',
+      });
 
-      const updated = {
-        ...tournament,
-        teams: tournament.teams.filter((t) => t.id !== teamId),
-        updatedAt: Date.now(),
-      };
+      if (!response.ok) throw new Error('Failed to remove team');
 
-      await tournamentDB.saveTournament(updated);
-
-      set((state) => ({
-        tournaments: state.tournaments.map((t) => (t.id === tournamentId ? updated : t)),
-        currentTournament: state.currentTournament?.id === tournamentId ? updated : state.currentTournament,
-        isLoading: false,
-      }));
+      // Reload tournament to get fresh data
+      await get().selectTournament(tournamentId);
+      await get().loadTournaments();
+      set({ isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
@@ -178,25 +166,42 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   startSwissRound: async (tournamentId) => {
     set({ isLoading: true, error: null });
     try {
-      const tournament = await tournamentDB.getTournament(tournamentId);
-      if (!tournament) throw new Error('Tournament not found');
+      // Get current tournament
+      const response = await fetch(`/api/tournaments/${tournamentId}`);
+      if (!response.ok) throw new Error('Failed to load tournament');
+      const tournament = await response.json();
 
+      // Generate pairings
       const newMatches = generateSwissPairings(tournament);
-      const updated = {
-        ...tournament,
-        matches: [...tournament.matches, ...newMatches],
-        currentRound: tournament.currentRound + 1,
-        currentPhase: 'swiss' as const,
-        updatedAt: Date.now(),
-      };
 
-      await tournamentDB.saveTournament(updated);
+      // Create matches in database
+      for (const match of newMatches) {
+        await fetch('/api/matches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tournamentId,
+            round: match.round,
+            team1Id: match.team1Id,
+            team2Id: match.team2Id,
+          }),
+        });
+      }
 
-      set((state) => ({
-        tournaments: state.tournaments.map((t) => (t.id === tournamentId ? updated : t)),
-        currentTournament: state.currentTournament?.id === tournamentId ? updated : state.currentTournament,
-        isLoading: false,
-      }));
+      // Update tournament phase and round
+      await fetch(`/api/tournaments/${tournamentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPhase: 'swiss',
+          currentRound: tournament.currentRound + 1,
+        }),
+      });
+
+      // Reload tournament
+      await get().selectTournament(tournamentId);
+      await get().loadTournaments();
+      set({ isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
@@ -205,47 +210,109 @@ export const useTournamentStore = create<TournamentStore>((set, get) => ({
   registerMatchResult: async (tournamentId, matchId, winnerId, team1Score, team2Score) => {
     set({ isLoading: true, error: null });
     try {
-      const tournament = await tournamentDB.getTournament(tournamentId);
-      if (!tournament) throw new Error('Tournament not found');
+      // Get current tournament
+      const tournamentResponse = await fetch(`/api/tournaments/${tournamentId}`);
+      if (!tournamentResponse.ok) throw new Error('Failed to load tournament');
+      const tournament = await tournamentResponse.json();
 
-      const matchIndex = tournament.matches.findIndex((m) => m.id === matchId);
-      if (matchIndex === -1) throw new Error('Match not found');
+      // Find the match
+      const match = tournament.matches.find((m: Match) => m.id === matchId);
+      if (!match) throw new Error('Match not found');
 
+      // Update match
+      await fetch('/api/matches', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: matchId,
+          team1Score,
+          team2Score,
+          winnerId,
+          isCompleted: true,
+        }),
+      });
+
+      // Update team records
       const updatedMatch: Match = {
-        ...tournament.matches[matchIndex],
+        ...match,
         team1Score,
         team2Score,
         winnerId,
         isCompleted: true,
       };
 
-      const matches = [...tournament.matches];
-      matches[matchIndex] = updatedMatch;
+      const updatedTournament = updateTeamRecords(tournament, updatedMatch);
 
-      let updated = { ...tournament, matches };
-      updated = updateTeamRecords(updated, updatedMatch);
-      updated.updatedAt = Date.now();
+      // Update all teams
+      for (const team of updatedTournament.teams) {
+        await fetch('/api/teams', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: team.id,
+            wins: team.wins,
+            losses: team.losses,
+            points: team.points,
+            buchholz: team.buchholz,
+            opponents: team.opponents,
+          }),
+        });
+      }
 
-      await tournamentDB.saveTournament(updated);
-
-      set((state) => ({
-        tournaments: state.tournaments.map((t) => (t.id === tournamentId ? updated : t)),
-        currentTournament: state.currentTournament?.id === tournamentId ? updated : state.currentTournament,
-        isLoading: false,
-      }));
+      // Reload tournament
+      await get().selectTournament(tournamentId);
+      await get().loadTournaments();
+      set({ isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
   },
 
   exportData: async () => {
-    return tournamentDB.exportData();
+    const tournaments = get().tournaments;
+    return JSON.stringify(tournaments, null, 2);
   },
 
   importData: async (jsonData) => {
     set({ isLoading: true, error: null });
     try {
-      await tournamentDB.importData(jsonData);
+      const tournaments = JSON.parse(jsonData);
+
+      // Import each tournament
+      for (const tournamentData of tournaments) {
+        // Create tournament
+        const response = await fetch('/api/tournaments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: tournamentData.name,
+            date: tournamentData.date,
+            settings: tournamentData.settings,
+            currentPhase: tournamentData.currentPhase,
+            currentRound: tournamentData.currentRound,
+          }),
+        });
+
+        if (!response.ok) continue;
+        const tournament = await response.json();
+
+        // Add teams
+        for (const team of tournamentData.teams) {
+          await fetch('/api/teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tournamentId: tournament.id,
+              name: team.name,
+              players: team.players,
+              contactInfo: team.contactInfo,
+            }),
+          });
+        }
+
+        // Note: Matches would need to be recreated through swiss rounds
+      }
+
       await get().loadTournaments();
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });

@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
-import { announcementDB } from '@/lib/announcement-db';
+import { announcementAPI } from '@/lib/announcement-api';
 import { Announcement } from '@/types/announcement';
-import { generateId } from '@/lib/utils';
 import { useTournamentStore } from '@/stores/tournament-store';
 
 export default function TavlingsledningenPage() {
@@ -36,12 +35,12 @@ export default function TavlingsledningenPage() {
   }, [loadTournaments]);
 
   const loadData = async () => {
-    const data = await announcementDB.getAllAnnouncements();
+    const data = await announcementAPI.getAllAnnouncements();
     setAnnouncements(data);
 
     // Mark all as read when viewing
     for (const announcement of data) {
-      await announcementDB.markAsRead(announcement.id);
+      await announcementAPI.markAsRead(announcement.id);
     }
   };
 
@@ -74,18 +73,14 @@ export default function TavlingsledningenPage() {
 
     const tournament = tournaments.find(t => t.id === newAnnouncement.tournamentId);
 
-    const announcement: Announcement = {
-      id: generateId(),
+    await announcementAPI.createAnnouncement({
       title: newAnnouncement.title.trim(),
       message: newAnnouncement.message.trim(),
       tournamentId: newAnnouncement.tournamentId || undefined,
       tournamentName: tournament?.name,
       priority: newAnnouncement.priority,
-      createdAt: Date.now(),
-      readBy: [],
-    };
+    });
 
-    await announcementDB.createAnnouncement(announcement);
     await loadData();
 
     setNewAnnouncement({
@@ -99,7 +94,7 @@ export default function TavlingsledningenPage() {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Är du säker på att du vill radera detta meddelande?')) {
-      await announcementDB.deleteAnnouncement(id);
+      await announcementAPI.deleteAnnouncement(id);
       await loadData();
     }
   };
