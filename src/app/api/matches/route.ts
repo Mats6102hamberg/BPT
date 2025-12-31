@@ -5,18 +5,18 @@ import { sql, handleDbError, generateId } from '@/lib/db-client';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { tournamentId, round, team1Id, team2Id, cupType } = body;
+    const { tournamentId, round, team1Id, team2Id, cupType, courtNumber } = body;
 
     const id = generateId();
 
     await sql`
       INSERT INTO matches (
         id, tournament_id, round, team1_id, team2_id,
-        is_completed, cup_type
+        is_completed, cup_type, court_number
       )
       VALUES (
         ${id}, ${tournamentId}, ${round}, ${team1Id}, ${team2Id},
-        false, ${cupType || null}
+        false, ${cupType || null}, ${courtNumber || null}
       )
     `;
 
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       team2Id,
       isCompleted: false,
       cupType: cupType || undefined,
+      courtNumber: courtNumber || undefined,
     };
 
     return NextResponse.json(match);

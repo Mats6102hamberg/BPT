@@ -61,6 +61,7 @@ export async function GET(
         isCompleted: match.is_completed,
         winnerId: match.winner_id,
         cupType: match.cup_type || undefined,
+        courtNumber: match.court_number || undefined,
       })),
     };
 

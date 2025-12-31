@@ -29,6 +29,7 @@ export interface Match {
   isCompleted: boolean;
   winnerId?: string;
   cupType?: 'A' | 'B'; // For cup matches (A or B tournament)
+  courtNumber?: string; // Court/field number (bannummer)
 }
 
 export interface TournamentSettings {

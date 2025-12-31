@@ -114,6 +114,14 @@ export default function Dashboard() {
                 )}
               </Button>
             </Link>
+            <Link href="/mina-matcher">
+              <Button
+                size="lg"
+                className="text-xl px-10 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
+              >
+                🎯 Mina Matcher
+              </Button>
+            </Link>
             <Link href="/resultat">
               <Button
                 size="lg"
